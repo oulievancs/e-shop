@@ -83,6 +83,7 @@ class Store implements JsonSerializable
     }
 
     public function jsonSerialize() {
+        // TODO: Implement jsonSerialize() method.
         return array (
             "id" => $this->id,
             "storeName" => $this->StoreName

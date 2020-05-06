@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8"/>
+		<link href="http://fonts.googleapis.com/css?family=Open+Sans:400,700" rel="stylesheet" />
+
+		<!-- The main CSS file -->
+		<link href="style.css" rel="stylesheet" />
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+		<!--[if lt IE 9]>
+			<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+		<![endif]-->
+	</head>
+    <!-- Include AngularJS from Google's CDN -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    
+	<!-- The ng-app directive tells angular that the code below should be evaluated -->
+    <script>
+    var app = angular.module("myApp", []);
+    
+    app.directive("getModifyProduct", function() {
+        
+    })
+    
+    .controller("myCtl", function($scope, $http) {
+
+        $scope.init = function() {
+            $scope.login = false;
+            $scope.toModify = '';
+            $scope.store = '';
+
+            $http.get("/login")
+                .success(function (data) {
+                    if (data.valid === true) {
+                        $scope.sess = true;
+                        $scope.role = data.role;
+                        $scope.customerName = data.username;
+
+                        $scope.findSearch = false;
+                        $scope.orderList = false;
+                        $scope.myOrder = [];
+                        $scope.findSearch = false;
+                        $scope.orderProceed = false;
+                        $scope.orderProceeded = false;
+
+                        $scope.change = false;
+                        $scope.addProduct = false;
+
+                        $http.get("/getStores")
+                            .success(function (data) {
+                                $scope.stores = data;
+                            })
+                            .error(function () {
+                                alert('Request failed! Check the connection.');
+                                $scope.active='logout';
+                                $scope.login=true;
+                                $scope.sess=false;
+                                $scope.role='';
+                                $scope.password='';
+                                $scope.storeName = '';
+                                $scope.products = '';
+
+                                $http.post("/logout")
+                                    .success(function (data) {
+
+                                    })
+                                    .error(function() {
+
+                                    });
+                            });
+                    } else {
+                        $scope.failMess = true;
+                        alert("Hint; To login as administrator you have to fill as username \"admin\" and as password \"admin\". To login as customer you have to fill as username \"customer\" and as password \"pass\". Thank you.");
+                    }
+                })
+                .error(function () {
+                    alter('Login failed. Please check your connection.');
+                });
+        }
+        
+        $scope.refreshProducts = function () {
+            if ($scope.sess && $scope.store) {
+                if($scope.store != 'allProductsCDA') {
+                    $scope.products = [];
+                    $http.get("/getStores")
+                        .success(function (data) {
+                            angular.forEach(data, function (value) {
+                                if (value.id == $scope.store) {
+                                    $scope.storeName = value.storeName;
+                                }
+                            });
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+
+                    $http.get("/getProducts/" + $scope.store)
+                        .success(function (data) {
+                            angular.forEach(data, function (value) {
+                                pushIt = false;
+                                angular.forEach($scope.myOrder, function (value1) {
+                                    if (value.id == value1.id) {
+                                        pushIt = true;
+                                    }
+                                });
+                                $scope.products.push({
+                                    "id": value.id,
+                                    "productName": value.productName,
+                                    "productPrice": value.productPrice,
+                                    "store": value.store.storeName,
+                                    "toBuy": pushIt
+                                });
+                            });
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                } else {
+                    $scope.products = [];
+                    $http.get("/getStores")
+                        .success(function (data) {
+                            angular.forEach(data, function (value) {
+                                console.log(value);
+                                $http.get("/getProducts/" + value.id)
+                                    .success(function (data) {
+                                        angular.forEach(data, function (value) {
+                                            pushIt = false;
+                                            angular.forEach($scope.myOrder, function (value1) {
+                                                if (value.id == value1.id) {
+                                                    pushIt = true;
+                                                }
+                                            });
+                                            $scope.products.push({
+                                                "id": value.id,
+                                                "productName": value.productName,
+                                                "productPrice": value.productPrice,
+                                                "store": value.store.storeName,
+                                                "toBuy": pushIt
+                                            });
+                                        });
+                                    })
+                                    .error(function () {
+                                        alert('Request failed! Check the connection.');
+                                    });
+                            });
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                }
+            } else {
+                $scope.products = null;
+            }
+            
+            /*if ($scope.role == 'customer') {
+                $scope.myOrder = '';
+            }*/
+        }
+        
+        $scope.loginEnter = function() {
+            $scope.active = 'login';
+            $http.post("/login/" + $scope.username + "/" + $scope.password)
+                .success(function (data) {
+                    if (data.valid == true) {
+                        $scope.sess = true;
+                        $scope.role = data.role;
+                        $scope.customerName = $scope.username;
+                        
+                        $scope.findSearch = false;
+                        $scope.orderList = false;
+                        $scope.myOrder = [];
+                        $scope.findSearch = false;
+                        $scope.orderProceed = false;
+                        $scope.orderProceeded = false;
+                        
+                        $scope.change = false;
+                        $scope.addProduct = false;
+                        
+                        $http.get("/getStores")
+                            .success(function (data) {
+                                $scope.stores = data;
+                            })
+                            .error(function () {
+                                alert('Request failed! Check the connection.');
+                            });
+                    } else {
+                        $scope.failMess = true;
+                        alert("Hint; To login as administrator you have to fill as username \"admin\" and as password \"admin\". To login as customer you have to fill as username \"customer\" and as password \"pass\". Thank you.");
+                    }
+                })
+                .error(function () {
+                    alter('Login failed. Please check your connection.');
+                });
+        }
+
+        $scope.countForDelete = function() {
+            cnt = 0;
+            angular.forEach($scope.products, function(value) {
+                if (value.toDelete) {
+                    cnt += 1;
+                }
+            });
+
+            return cnt;
+        }
+
+        $scope.deleteSelectedProducts = function() {
+            if ($scope.role == 'admin') {
+                if(confirm("Are you sure you want to to delete selected products?")) {
+                    angular.forEach($scope.products, function(value) {
+                        if (value.toDelete) {
+                            $http.delete("/deleteProduct/" + value.id)
+                                .success(function (data) {
+                                    console.log("Log: " + data);
+                                })
+                                .error(function () {
+                                    alert('Product deletion failed. Check the connection.');
+                                });
+                        }
+                    });
+                    
+                    
+                    
+                    $http.get("/getProducts/" + $scope.store)
+                        .success(function (data) {
+                            $scope.products = data;
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                }
+            }
+        }
+        
+        $scope.modifyProduct = function() {
+            if ($scope.role == 'admin') {
+                if ($scope.toModify != '') {
+                    $scope.change = true;
+                    
+                    angular.forEach($scope.products, function(value) {
+                        if ($scope.toModify == value.id) {
+                            $scope.newProductName = value.productName;
+                            $scope.newProductPrice = value.productPrice;
+                        }
+                    });
+                } else {
+                    alert("Select a product.");
+                }
+            }
+        }
+        
+        $scope.submitNewPrice = function() {
+            if ($scope.role == 'admin') {
+                if ($scope.change==true) {
+                    angular.forEach($scope.products, function(value) {
+                        if ($scope.toModify == value.id) {
+                            $http.post("/updateProduct/" + value.id + "/" + $scope.newProductPrice)
+                                .success(function (data) {
+                                    
+                                })
+                                .error(function () {
+                                    alert('Update of product failed. Check the connection.');
+                                });
+                        }
+                    });
+                    $http.get("/getProducts/" + $scope.store)
+                        .success(function (data) {
+                            $scope.products = data;
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                    
+                    $scope.change = false;
+                }
+                $scope.newProductName = '';
+                $scope.newProductPrice = '';
+            }
+        }
+        
+        $scope.addNewProduct = function() {
+            if ($scope.role == 'admin') {
+                isExists = false;
+                
+                if ($scope.newProductName != '' && $scope.newProductPrice != null && $scope.newProductPrice>0 && $scope.addProduct==true) {
+                    angular.forEach($scope.products, function(value) {
+                        if ($scope.newProductName==value.productName) {
+                            isExists = true;
+                        }
+                    });
+                    
+                    if (isExists) {
+                        alert('There is another product with existing name. Try put another or modify the current product.');
+                    } else {
+                        $http.post("/insertProduct/" + $scope.newProductName + "/" + $scope.newProductPrice + "/store/" + $scope.store)
+                        .success(function (data) {
+                            
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                        
+                        alert('Successfuly new product inserted!');
+                        $scope.addProduct = false;
+                    }
+                    
+                    $http.get("/getProducts/" + $scope.store)
+                        .success(function (data) {
+                            $scope.products = data;
+                        })
+                        .error(function () {
+                            alert('Request failed! Check the connection.');
+                        });
+                } else {
+                    alert('Problem on form.');
+                }
+                $scope.newProductName = '';
+                $scope.newProductPrice = '';
+            }
+        }
+
+        $scope.addNewProductCart = function() {
+            if($scope.store != '') {
+                console.log($scope.store);
+                $scope.change=false;
+                $scope.addProduct=true;
+            } else {
+                alert('You must select a store.');
+            }
+        }
+        
+        $scope.getTotal = function() {
+            if ($scope.role == 'customer') {
+                var total = parseFloat(0);
+                angular.forEach($scope.myOrder, function(value) {
+                    total = total + parseFloat(value.productPrice);
+                });
+                
+                return total;
+            }
+        }
+        
+        $scope.addToOrder = function() {
+            var myOrder;
+            if ($scope.role == 'customer') {
+                myOrder = [];
+
+                angular.forEach($scope.products, function (value) {
+                    if (value.toBuy) {
+                        console.log(value);
+                        myOrder.push({
+                            "id": value.id,
+                            "productName": value.productName,
+                            "productPrice": value.productPrice,
+                            "store": value.store
+                        });
+                    }
+                });
+
+                angular.forEach($scope.myOrder, function (value1) {
+                    not_delete = true;
+                    angular.forEach($scope.products, function (value) {
+                        console.log(value.store + "  " + value1.store);
+                        if (value.store == value1.store) {
+                            not_delete = false;
+                        }
+                    });
+                    if (not_delete) {
+                        myOrder.push({
+                            "id": value1.id,
+                            "productName": value1.productName,
+                            "productPrice": value1.productPrice,
+                            "store": value1.store
+                        });
+                    }
+                });
+                $scope.myOrder = myOrder;
+            }
+        }
+        
+        $scope.proceedOrder = function() {
+            if ($scope.role == 'customer') {
+                var total = $scope.getTotal();
+                
+                $scope.resultOrder = 'You have to pay ' + total.toFixed(2) + '$.';
+                $scope.orderProceed = true;
+                $scope.orderProceeded = true;
+            }
+        }
+        
+        $scope.exitOrder = function() {
+            if ($scope.role == 'customer') {
+                if (confirm("Are you sure you want to exit?")) {
+                    $scope.logout();
+                }
+            }
+        }
+        
+        $scope.logout = function() {
+            if (confirm("Are you sure you want to logout?")) {
+                $scope.active='logout';
+                $scope.login=true;
+                $scope.sess=false;
+                $scope.role='';
+                $scope.password='';
+                $scope.storeName = '';
+                $scope.products = '';
+
+                $http.post("/logout")
+                    .success(function (data) {
+
+                    })
+                    .error(function() {
+
+                    });
+            }
+        }
+        
+        $scope.reload = function() {
+            $http.get("/getProducts/" + $scope.store)
+                .success(function (data) {
+                    $scope.products = data;
+                })
+                .error(function () {
+                    alert('Request failed! Check the connection.');
+                });
+        }
+    })
+    
+    .filter("priceLimits", function($filter) {
+        return function (data, downLimit, upLimit) {
+            if (downLimit && upLimit) {
+                rows = [];
+                angular.forEach(data, function(value) {
+                    if (parseFloat(value.productPrice) >= downLimit && parseFloat(value.productPrice) <= upLimit) {
+                        rows.push(value);
+                    }
+                });
+                return rows;
+            } else {
+                return data;
+            }
+        }
+    });
+    
+    
+    </script>
+
+	<body ng-app="myApp" ng-controller="myCtl" ng-init="login=false; failMess=false; sess=false; role=''; init();">
+
+		<!-- The navigation menu will get the value of the "active" variable as a class.
+			 The $event.preventDefault() stops the page from jumping when a link is clicked. -->
+
+            <nav ng-show="sess==false" class="{{active}}" ng-click="$event.preventDefault()">
+
+                <!-- When a link in the menu is clicked, we set the active variable -->
+
+                <a href="#" class="home" ng-click="active='home'; login=false;">Home</a>
+                <a href="#" class="about" ng-click="active='about'; login=false;">About</a>
+                <a href="#" class="contact" ng-click="active='contact'; login=false;">Contact</a>
+                <a href="#" class="login" ng-click="active='login'; login=true;">Login</a>
+            </nav>
+            
+            <nav ng-show="sess==true && role=='admin'" class="{{active}}" ng-click="$event.preventDefault()">
+
+                <!-- When a link in the menu is clicked, we set the active variable -->
+                <a href="#" class="addNewProduct" class="btn btn-primary" ng-click="addNewProductCart()">Add Product</a>
+                <a href="#" style="background-color: red;" class="logout" ng-click="logout()">Logout</a>
+                <a href="#" style="background-color: orange;" ng-click="reload()"><span class="glyphicon glyphicon-refresh"></span>Refresh List</a>
+            </nav>
+
+            <!--customer / Customer Menu Bar-->
+            <nav ng-show="sess==true && role=='customer'" class="{{active}}" ng-click="$event.preventDefault()">    
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-9">
+                            <!-- When a link in the menu is clicked, we set the active variable -->
+                            <a href="#" class="search" ng-click="active='search'; findSearch=true; orderList=false;">Search</a>
+                            <a href="#" class="orderList" class="btn btn-primary" ng-click="active='orderList'; findSearch=false; orderList=true;">Order List</a>
+                            <a href="#" style="background-color: red;" class="logout" ng-click="logout()">Logout</a>
+                            <a href="#" style="background-color: orange;" ng-disabled="orderProceeded" ng-click="reload()"><span class="glyphicon glyphicon-refresh"></span>Refresh List</a>
+                            
+                        
+                        </div>
+                        <div class="col-md-3">
+                            <span class="align-middle">Hello <b>{{customerName}}!</b></span>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <!------------------------------------------------------------>
+
+		<!-- ng-show will show an element if the value in the quotes is truthful,
+			 while ng-hide does the opposite. Because the active variable is not set
+			 initially, this will cause the first paragraph to be visible. -->
+
+
+		<p ng-show="active && active!='login' && active!='logout' && role==''">You chose <b>{{active}}.</b></p>
+        <p ng-show="active=='logout'">Your session has expired!</p>
+
+        <div ng-show="login==true && sess==false">
+            <h4>Follow the tokens to enter.</h4>
+            <table>
+                
+                <tr>
+                    <td>Username</td>
+                    <td><input type="text" ng-model="username" /></td>
+                <tr>
+                    <td>Password</td>
+                    <td><input type="password" ng-model="password" /></td>
+                </tr>
+                <tr>
+                    <td>
+                        <p style="color: red;" ng-show="failMess">Failed to login.</p>
+                    <td>
+                    <td>
+                        <button class="btn btn-success" ng-click="loginEnter()">Enter</button>
+                    </td>
+            </table>
+        </div>
+        
+        <!-- Administrator Page -->
+        <!-- Show all products -->
+        <div ng-show="sess==true && role=='admin'">
+            <h4>Administrator profile</h4>
+
+            <div ng-show="change==false && addProduct==false">
+                <table>
+                    <tr>
+                        <td>Select a store:</td>
+                        <td>
+                            <select ng-model="store" ng-change="refreshProducts()">
+                                <option value=''>--------None--------</option>
+                                <option ng-repeat="p in stores" value="{{p.id}}">{{p.storeName}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table><br/>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product Name</th>
+                            <th scope="col">Price $</th>
+                            <th scope="col">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="p in products">
+                            <td>{{p.productName}}</td>
+                            <td>{{p.productPrice | currency}}</td>
+                            <td><input type="checkbox" ng-model="p.toDelete"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="row" ng-show="products.length > 0">
+                    <div class="col-md-9">
+                    </div>
+                    <div class="col-md-3">
+                            <b>Found </b>{{products.length}} products
+                    </div>
+                </div>
+
+                <table>
+                    <tr>
+                        <td><button class="btn btn-danger" ng-disabled="countForDelete() <= 0" ng-click="deleteSelectedProducts()">Delete Products</button></td>
+                        <td><br/></td>
+                    </tr>
+                </table><br/>
+
+                <table>
+                    <tr>
+                        <td>
+                            <div class="input-group">
+                                <select ng-model="toModify">
+                                    <option value=''>----None----</option>
+                                    <option ng-repeat="p in products" value="{{p.id}}">{{p.productName}}</option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-warning" ng-click="modifyProduct();">Modify Product</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table><br/>
+            </div>
+            
+            
+            <div ng-show="(toModify != '' && toModify != null && change==true) || (addProduct==true)">
+                <br/>
+                <div ng-show="change==true">
+                    <h4>Modify Product</h4>
+                </div>
+                <div ng-show="addProduct==true">
+                    <h4>Add New Product to Store: {{storeName}}</h4>
+                </div>
+                <h3 ng-show="toModify != '' && toModify != null && change==true">Modification Product on Store: {{storeName}}</h3>
+                <table>
+                    <tr>
+                        <td>
+                            Product Name:
+                        </td>
+                        <td>
+                            <div ng-show="change==true">
+                                <input type="text" name="productName" ng-model="newProductName" readonly />
+                            </div>
+                            <div ng-show="addProduct==true">
+                                <input type="text" name="productName" ng-model="newProductName" />
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Product Price:
+                        </td>
+                        <td>
+                            <input type="number" name="productPrice" ng-model="newProductPrice" />
+                        </td>
+                    </tr>
+                </table><br/>
+                <table>
+                    <tr>
+                        <td>
+                            <div ng-show="change==true">
+                                <button class="btn btn-primary"  ng-click="submitNewPrice()" >Submit</button>
+                            </div>
+                            <div ng-show="addProduct==true">
+                                <button class="btn btn-primary"  ng-click="addNewProduct()" >Submit</button>
+                            </div>
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><button class="btn btn-warning" ng-click="change=false; addProduct=false; newProductName=''; newProductPrice='';" >Back</button>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <!-- ********************************************* -->
+        
+        <!-- customer Profile -->
+        <!-- Order -->
+        <div ng-show="sess==true && role=='customer'">
+            <div ng-show="findSearch==false && orderList==false">
+                <h4>Welcome dear {{customerName}}!</h4>
+            </div>
+
+            <table ng-show="findSearch==true && orderList==false">
+                <tr>
+                    <td>Select a store:</td>
+                    <td>
+                        <select ng-model="store" ng-disabled="orderProceeded" ng-change="refreshProducts()">
+                            <option value=''>----None----</option>
+                            <option ng-repeat="p in stores" value="{{p.id}}">{{p.storeName}}</option>
+                            <option value='allProductsCDA'>----All----</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+            
+            
+            <div ng-show="findSearch==true && orderList==false">
+                <table>
+                    <tr>
+                        <td><b>Price interval:</b></td>
+                        <td><input type="number" ng-model="minPrice" placeholder="starts" />
+                            <input type="number" ng-model="maxPrice" placeholder="ends" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><b>Find by name:</b></td>
+                        <td><input type="text" ng-model="sName.productName" placeholder="complete name" /></td>
+                    </tr>
+                    <tr>
+                        <td><b>Sort Criteria</b></td>
+                        <td><select ng-model="sortCrit">
+                            <option value="">----None----</option>
+                            <option value="productName">asc name</option>
+                            <option value="-productName">desc name</option>
+                            <option value="productPrice">asc cost</option>
+                            <option value="-productPrice">desc cost</option>
+                        </select></td>
+                    </tr>
+                </table><br/>
+
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Product Name</th>
+                        <th scope="col">Store</th>
+                        <th scope="col">Price $</th>
+                        <th scope="col">Order</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="p in products | priceLimits:minPrice:maxPrice | filter:sName | orderBy:sortCrit">
+                        <td>{{p.productName}}</td>
+                        <td>{{p.store}}</td>
+                        <td>{{p.productPrice | currency}}</td>
+                        <td><input type="checkbox" ng-disabled="orderProceeded" ng-model="p.toBuy" ng-change="addToOrder()"/></td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <div class="row" ng-show="products.length > 0">
+                    <div class="col-md-9">
+                    </div>
+                    <div class="col-md-3">
+                        <b>Found </b>{{products.length}} products
+                    </div>
+                </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Total:</th>
+                            <th></th>
+                            <th>{{getTotal() | currency}}</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            
+            <!-- Order List -->
+            <div ng-show="orderList==true && findSearch==false">
+                <h3>Order List</h3>
+
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Product Name</th>
+                        <th scope="col">Store</th>
+                        <th scope="col">Price $</th>
+                        <th scope="col">Selected</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="p in myOrder">
+                        <td>{{p.productName}}</td>
+                        <td>{{p.store}}</td>
+                        <td>{{p.productPrice | currency}}</td>
+                        <td><input type="checkbox" checked="checked" disabled="disabled"/></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Total:</th>
+                            <th></th>
+                            <th>{{getTotal() | currency}}</th>
+                        </tr>
+                    </thead>
+                </table>
+                <table>
+                    <tr>
+                        <td><button class="btn btn-warning" ng-click="proceedOrder()" ng-disabled="getTotal() == 0 || orderProceed==true"/>OK</button></td>
+                        <td><button class="btn btn-danger" ng-click="exitOrder()" />EXIT</button></td>
+                    </tr>
+                </table>
+                <div style="text-align: center;">
+                    <p ng-bind="resultOrder"></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ********************************************* -->
+	</body>
+</html>

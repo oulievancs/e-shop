@@ -74,10 +74,12 @@ class Product implements JsonSerializable
     }
 
     public function jsonSerialize() {
+        // TODO: Implement jsonSerialize() method.
         return array(
             "id" => $this->id,
             "productName" => $this->ProductDescr,
-            "productPrice" => $this->ProductPrice
+            "productPrice" => $this->ProductPrice,
+            "store" => $this->Store
         );
     }
 }
